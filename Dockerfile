@@ -18,6 +18,6 @@ WORKDIR /app
 COPY --from=builder /flats-analyzer .
 COPY config.yaml .
 
-EXPOSE 9090
+EXPOSE 9093
 
 CMD ["./flats-analyzer", "-config", "config.yaml"]

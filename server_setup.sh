@@ -20,7 +20,7 @@ docker run -d \
   --name "$APP_CONTAINER" \
   --network "$NETWORK" \
   --restart unless-stopped \
-  -p 9093:9090 \
+  -p 9093:9093 \
   -v "$(pwd)/config.yaml:/app/config.yaml:ro" \
   -v "$LOG_DIR:/var/log/flats-analyzer" \
   "$APP_IMAGE"

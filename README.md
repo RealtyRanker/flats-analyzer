@@ -42,7 +42,7 @@ logging:
   file_path: "/var/log/flats-analyzer/app.log"
 
 metrics:
-  port: 9090
+  port: 9093
 ```
 
 ## Фильтрация подписок
@@ -102,7 +102,7 @@ cd /путь/к/flats-analyzer && bash server_setup.sh
 ### Управление контейнером
 
 ```bash
-# Логи
+# Логи-
 docker logs -f flats-analyzer
 
 # Остановить

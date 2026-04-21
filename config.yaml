@@ -15,4 +15,4 @@ logging:
   file_path: "/var/log/flats-analyzer/app.log"
 
 metrics:
-  port: 9090
+  port: 9093
