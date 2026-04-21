@@ -1,0 +1,83 @@
+package formatter
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/asmisnik/flats-analyzer/internal/model"
+)
+
+func FormatFlat(f *model.FlatInfo) string {
+	var sb strings.Builder
+
+	sb.WriteString("🏠 Новая квартира\n\n")
+	sb.WriteString("Ссылка: " + f.Link + "\n")
+	fmt.Fprintf(&sb, "Цена: %d ₽/мес\n", f.Price)
+
+	if f.Deposit > 0 {
+		fmt.Fprintf(&sb, "Депозит: %d ₽", f.Deposit)
+		if f.DepositMonths > 0 {
+			fmt.Fprintf(&sb, " (%d мес. предоплаты)", f.DepositMonths)
+		}
+		sb.WriteString("\n")
+	}
+	if f.Comission > 0 {
+		fmt.Fprintf(&sb, "Комиссия: %d%%\n", f.Comission)
+	}
+
+	sb.WriteString("\n")
+	fmt.Fprintf(&sb, "Комнат: %d\n", f.RoomNumber)
+	fmt.Fprintf(&sb, "Площадь: %.0f м² (жилая %.0f, кухня %.0f)\n",
+		f.TotalArea, f.LivingArea, f.KitchenArea)
+	fmt.Fprintf(&sb, "Этаж: %d из %d\n", f.Floor, f.MaxFloor)
+	if f.CeilingHeight > 0 {
+		fmt.Fprintf(&sb, "Высота потолков: %.1f м\n", f.CeilingHeight)
+	}
+
+	sb.WriteString("\n")
+	if f.UndergroundDistanceInfo != "" {
+		sb.WriteString("Метро: " + strings.TrimRight(f.UndergroundDistanceInfo, ", ") + "\n")
+		fmt.Fprintf(&sb, "Место метро в рейтинге: %d\n", f.UndergroundPlace)
+	}
+
+	sb.WriteString("\n")
+	if f.Renovation != "" {
+		sb.WriteString("Ремонт: " + f.Renovation + "\n")
+	}
+
+	extras := []string{}
+	if f.HasConditioner {
+		extras = append(extras, "кондиционер")
+	}
+	if f.HasDishwasher {
+		extras = append(extras, "посудомойка")
+	}
+	if f.LoggiaCount > 0 {
+		extras = append(extras, fmt.Sprintf("лоджий: %d", f.LoggiaCount))
+	}
+	if f.BalconyCount > 0 {
+		extras = append(extras, fmt.Sprintf("балконов: %d", f.BalconyCount))
+	}
+	if len(extras) > 0 {
+		sb.WriteString("Удобства: " + strings.Join(extras, ", ") + "\n")
+	}
+
+	allowed := []string{}
+	if f.ChildrenAllowed {
+		allowed = append(allowed, "дети")
+	}
+	if f.PetsAllowed {
+		allowed = append(allowed, "животные")
+	}
+	if len(allowed) > 0 {
+		sb.WriteString("Разрешено: " + strings.Join(allowed, ", ") + "\n")
+	}
+
+	sb.WriteString("\n")
+	fmt.Fprintf(&sb, "Score: %d\n", f.FlatScore)
+	if f.LastUpdated != "" {
+		sb.WriteString("Обновлено: " + f.LastUpdated + "\n")
+	}
+
+	return sb.String()
+}
