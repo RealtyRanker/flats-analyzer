@@ -13,6 +13,7 @@ import (
 	"github.com/asmisnik/flats-analyzer/internal/metrics"
 	"github.com/asmisnik/flats-analyzer/internal/model"
 	"github.com/asmisnik/flats-analyzer/internal/notifier"
+	"github.com/asmisnik/flats-analyzer/internal/scoring"
 )
 
 type Consumer struct {
@@ -86,7 +87,17 @@ func (c *Consumer) processMessage(ctx context.Context, msg kafka.Message) {
 	}
 
 	for _, sub := range subs {
-		if !matchesSubscription(&flat, &sub) {
+		score := flat.FlatScore
+		if sub.MinScore > 0 {
+			params, err := c.db.GetScoringParams(ctx, sub.ID)
+			if err != nil {
+				c.logger.Warn("fetching scoring params failed", zap.Int("sub_id", sub.ID), zap.Error(err))
+			} else if params != nil {
+				score = scoring.Score(&flat, toCustomParams(params))
+			}
+		}
+
+		if !matchesSubscription(&flat, &sub, score) {
 			c.logger.Debug("flat does not match subscription",
 				zap.String("link", flat.Link), zap.Int("sub_id", sub.ID))
 			continue
@@ -109,7 +120,13 @@ func (c *Consumer) processMessage(ctx context.Context, msg kafka.Message) {
 			showRegion = false
 		}
 
-		text := formatter.FormatFlat(&flat, showRegion)
+		showDealType, err := c.db.HasMultipleActiveDealTypes(ctx, sub.ChatID)
+		if err != nil {
+			c.logger.Warn("checking multiple deal types failed", zap.Int64("chat_id", sub.ChatID), zap.Error(err))
+			showDealType = false
+		}
+
+		text := formatter.FormatFlat(&flat, showRegion, showDealType)
 		if err := c.notifier.Send(ctx, sub.ChatID, text); err != nil {
 			metrics.MessagesFailed.Inc()
 			c.logger.Warn("send failed",
@@ -133,7 +150,10 @@ func (c *Consumer) processMessage(ctx context.Context, msg kafka.Message) {
 	metrics.ProcessDuration.Observe(time.Since(start).Seconds())
 }
 
-func matchesSubscription(f *model.FlatInfo, s *db.Subscription) bool {
+func matchesSubscription(f *model.FlatInfo, s *db.Subscription, score int) bool {
+	if s.DealType != "" && f.DealType != s.DealType {
+		return false
+	}
 	if s.Region > 0 && f.Region != s.Region {
 		return false
 	}
@@ -149,7 +169,7 @@ func matchesSubscription(f *model.FlatInfo, s *db.Subscription) bool {
 	if s.MaxArea > 0 && f.TotalArea > s.MaxArea {
 		return false
 	}
-	if s.MinScore > 0 && f.FlatScore < s.MinScore {
+	if s.MinScore > 0 && score < s.MinScore {
 		return false
 	}
 	if len(s.Rooms) > 0 {
@@ -164,5 +184,92 @@ func matchesSubscription(f *model.FlatInfo, s *db.Subscription) bool {
 			return false
 		}
 	}
+
+	if s.MinUndergroundPlace > 0 && (f.UndergroundPlace == 0 || f.UndergroundPlace > s.MinUndergroundPlace) {
+		return false
+	}
+	if s.MinKitchenArea > 0 && f.KitchenArea < s.MinKitchenArea {
+		return false
+	}
+	if s.MinFloor > 0 && f.Floor < s.MinFloor {
+		return false
+	}
+	if s.MaxFloor > 0 && f.Floor > s.MaxFloor {
+		return false
+	}
+	if s.MinCeilingHeight > 0 && f.CeilingHeight < s.MinCeilingHeight {
+		return false
+	}
+	if s.ChildrenRequired && !f.ChildrenAllowed {
+		return false
+	}
+	if s.PetsRequired && !f.PetsAllowed {
+		return false
+	}
+	if s.DishwasherRequired && !f.HasDishwasher {
+		return false
+	}
+	if s.ConditionerRequired && !f.HasConditioner {
+		return false
+	}
+	if s.MinRenovation != "" && renovationRank(f.Renovation) < renovationRank(s.MinRenovation) {
+		return false
+	}
+	if s.BalconyRequired && f.BalconyCount == 0 && f.LoggiaCount == 0 {
+		return false
+	}
+	switch s.BathroomType {
+	case "separated":
+		if f.SeparatedBathroomCount == 0 {
+			return false
+		}
+	case "combined":
+		if f.CombinedBathroomCount == 0 {
+			return false
+		}
+	}
+
 	return true
+}
+
+// toCustomParams converts the DB-shaped scoring params into scoring.CustomParams.
+func toCustomParams(p *db.ScoringParams) *scoring.CustomParams {
+	return &scoring.CustomParams{
+		AllArea:            p.AllArea,
+		KitchenArea:        p.KitchenArea,
+		Pets:               p.Pets,
+		Dishwasher:         p.Dishwasher,
+		Conditioner:        p.Conditioner,
+		Apartments:         p.Apartments,
+		TwoRoom:            p.TwoRoom,
+		ThreeRoom:          p.ThreeRoom,
+		FourRoom:           p.FourRoom,
+		AdditionalRooms:    p.AdditionalRooms,
+		WindowsYard:        p.WindowsYard,
+		WindowsStreet:      p.WindowsStreet,
+		WindowsBoth:        p.WindowsBoth,
+		RenovationDesign:   p.RenovationDesign,
+		RenovationEuro:     p.RenovationEuro,
+		RenovationCosmetic: p.RenovationCosmetic,
+		BathroomSeparated:  p.BathroomSeparated,
+		Balcony:            p.Balcony,
+		Loggia:             p.Loggia,
+		Underground:        p.Underground,
+	}
+}
+
+// renovationRank ranks renovation levels design > euro > cosmetic > (any
+// other value, including no renovation info), matching subscription-handler's
+// session.Renovation* ordering.
+func renovationRank(level string) int {
+	switch level {
+	case "design":
+		return 3
+	case "euro":
+		return 2
+	case "cosmetic":
+		return 1
+	default:
+		return 0
+	}
 }

@@ -3,6 +3,7 @@ package model
 type FlatInfo struct {
 	Link                     string  `json:"Link"`
 	Region                   int     `json:"Region"`
+	DealType                 string  `json:"DealType"`
 	Price                    int     `json:"Price"`
 	FlatScore                int     `json:"FlatScore"`
 	UndergroundScore         float64 `json:"UndergroundScore"`
@@ -33,4 +34,12 @@ type FlatInfo struct {
 	BuildingEntrancesNumber  int     `json:"BuildingEntrancesNumber"`
 	BuildingApartmentsNumber int     `json:"BuildingApartmentsNumber"`
 	BuildingElevatorsNumber  int     `json:"BuildingElevatorsNumber"`
+
+	// Sale-only fields (zero-valued for rent listings).
+	SaleType                  string `json:"SaleType"`
+	MortgageAllowed           bool   `json:"MortgageAllowed"`
+	IsNewBuilding             bool   `json:"IsNewBuilding"`
+	NewBuildingName           string `json:"NewBuildingName"`
+	IsByHomeowner             bool   `json:"IsByHomeowner"`
+	DemolishedInMoscowProgram bool   `json:"DemolishedInMoscowProgram"`
 }
