@@ -103,7 +103,13 @@ func (c *Consumer) processMessage(ctx context.Context, msg kafka.Message) {
 			continue
 		}
 
-		text := formatter.FormatFlat(&flat)
+		showRegion, err := c.db.HasMultipleActiveRegions(ctx, sub.ChatID)
+		if err != nil {
+			c.logger.Warn("checking multiple regions failed", zap.Int64("chat_id", sub.ChatID), zap.Error(err))
+			showRegion = false
+		}
+
+		text := formatter.FormatFlat(&flat, showRegion)
 		if err := c.notifier.Send(ctx, sub.ChatID, text); err != nil {
 			metrics.MessagesFailed.Inc()
 			c.logger.Warn("send failed",
@@ -128,6 +134,9 @@ func (c *Consumer) processMessage(ctx context.Context, msg kafka.Message) {
 }
 
 func matchesSubscription(f *model.FlatInfo, s *db.Subscription) bool {
+	if s.Region > 0 && f.Region != s.Region {
+		return false
+	}
 	if s.MinPrice > 0 && f.Price < s.MinPrice {
 		return false
 	}

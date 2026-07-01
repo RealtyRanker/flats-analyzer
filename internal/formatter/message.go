@@ -5,12 +5,21 @@ import (
 	"strings"
 
 	"github.com/asmisnik/flats-analyzer/internal/model"
+	"github.com/asmisnik/flats-analyzer/internal/region"
 )
 
-func FormatFlat(f *model.FlatInfo) string {
+// FormatFlat renders a notification message for a flat. showRegion should be
+// true when the recipient has active subscriptions in more than one region,
+// so the message needs to clarify which region this flat belongs to.
+func FormatFlat(f *model.FlatInfo, showRegion bool) string {
 	var sb strings.Builder
 
 	sb.WriteString("🏠 Новая квартира\n\n")
+	if showRegion {
+		if name := region.Name(f.Region); name != "" {
+			sb.WriteString("Регион: " + name + "\n")
+		}
+	}
 	sb.WriteString("Ссылка: " + f.Link + "\n")
 	fmt.Fprintf(&sb, "Цена: %d ₽/мес\n", f.Price)
 

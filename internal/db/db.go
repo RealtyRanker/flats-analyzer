@@ -10,6 +10,7 @@ import (
 type Subscription struct {
 	ID       int
 	ChatID   int64
+	Region   int
 	MinPrice int
 	MaxPrice int
 	MinArea  float64
@@ -39,7 +40,7 @@ func (db *DB) Close() {
 
 func (db *DB) GetActiveSubscriptions(ctx context.Context) ([]Subscription, error) {
 	rows, err := db.pool.Query(ctx,
-		`SELECT id, chat_id, min_price, max_price, min_area, max_area, rooms, min_score
+		`SELECT id, chat_id, region, min_price, max_price, min_area, max_area, rooms, min_score
 		 FROM user_subscriptions
 		 WHERE is_active = TRUE`)
 	if err != nil {
@@ -50,13 +51,28 @@ func (db *DB) GetActiveSubscriptions(ctx context.Context) ([]Subscription, error
 	var subs []Subscription
 	for rows.Next() {
 		var s Subscription
-		if err := rows.Scan(&s.ID, &s.ChatID, &s.MinPrice, &s.MaxPrice,
+		if err := rows.Scan(&s.ID, &s.ChatID, &s.Region, &s.MinPrice, &s.MaxPrice,
 			&s.MinArea, &s.MaxArea, &s.Rooms, &s.MinScore); err != nil {
 			return nil, fmt.Errorf("scanning subscription: %w", err)
 		}
 		subs = append(subs, s)
 	}
 	return subs, rows.Err()
+}
+
+// HasMultipleActiveRegions reports whether chatID currently has active
+// subscriptions spanning more than one region, in which case notifications
+// should mention which region a flat belongs to.
+func (db *DB) HasMultipleActiveRegions(ctx context.Context, chatID int64) (bool, error) {
+	var count int
+	err := db.pool.QueryRow(ctx,
+		`SELECT COUNT(DISTINCT region) FROM user_subscriptions
+		 WHERE chat_id = $1 AND is_active = TRUE`,
+		chatID).Scan(&count)
+	if err != nil {
+		return false, fmt.Errorf("counting distinct regions: %w", err)
+	}
+	return count > 1, nil
 }
 
 func (db *DB) GetFlatIDByLink(ctx context.Context, link string) (int, error) {

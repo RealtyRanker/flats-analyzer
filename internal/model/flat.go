@@ -2,6 +2,7 @@ package model
 
 type FlatInfo struct {
 	Link                     string  `json:"Link"`
+	Region                   int     `json:"Region"`
 	Price                    int     `json:"Price"`
 	FlatScore                int     `json:"FlatScore"`
 	UndergroundScore         float64 `json:"UndergroundScore"`
