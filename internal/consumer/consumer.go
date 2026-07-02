@@ -3,6 +3,7 @@ package consumer
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"time"
 
 	kafka "github.com/segmentio/kafka-go"
@@ -188,6 +189,9 @@ func matchesSubscription(f *model.FlatInfo, s *db.Subscription, score int) bool 
 	if s.MinUndergroundPlace > 0 && (f.UndergroundPlace == 0 || f.UndergroundPlace > s.MinUndergroundPlace) {
 		return false
 	}
+	if len(s.MetroStations) > 0 && !stationsIntersect(f.UndergroundStations, s.MetroStations) {
+		return false
+	}
 	if s.MinKitchenArea > 0 && f.KitchenArea < s.MinKitchenArea {
 		return false
 	}
@@ -256,6 +260,19 @@ func toCustomParams(p *db.ScoringParams) *scoring.CustomParams {
 		Loggia:             p.Loggia,
 		Underground:        p.Underground,
 	}
+}
+
+// stationsIntersect reports whether any of a flat's underground stations
+// matches (case-insensitively) any station in the subscription's filter set.
+func stationsIntersect(flatStations, filterStations []string) bool {
+	for _, fs := range flatStations {
+		for _, ss := range filterStations {
+			if strings.EqualFold(fs, ss) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // renovationRank ranks renovation levels design > euro > cosmetic > (any

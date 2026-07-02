@@ -9,16 +9,17 @@ import (
 )
 
 type Subscription struct {
-	ID       int
-	ChatID   int64
-	DealType string
-	Region   int
-	MinPrice int
-	MaxPrice int
-	MinArea  float64
-	MaxArea  float64
-	Rooms    []int32
-	MinScore int
+	ID            int
+	ChatID        int64
+	DealType      string
+	Region        int
+	MetroStations []string
+	MinPrice      int
+	MaxPrice      int
+	MinArea       float64
+	MaxArea       float64
+	Rooms         []int32
+	MinScore      int
 
 	// Extended filters (zero-valued when not set, meaning "no filter").
 	MinUndergroundPlace int
@@ -59,7 +60,7 @@ func (db *DB) GetActiveSubscriptions(ctx context.Context) ([]Subscription, error
 		`SELECT id, chat_id, deal_type, region, min_price, max_price, min_area, max_area, rooms, min_score,
 		        min_underground_place, min_kitchen_area, min_floor, max_floor, min_ceiling_height,
 		        children_required, pets_required, dishwasher_required, conditioner_required,
-		        min_renovation, balcony_required, bathroom_type
+		        min_renovation, balcony_required, bathroom_type, metro_stations
 		 FROM user_subscriptions
 		 WHERE is_active = TRUE`)
 	if err != nil {
@@ -74,7 +75,7 @@ func (db *DB) GetActiveSubscriptions(ctx context.Context) ([]Subscription, error
 			&s.MinArea, &s.MaxArea, &s.Rooms, &s.MinScore,
 			&s.MinUndergroundPlace, &s.MinKitchenArea, &s.MinFloor, &s.MaxFloor, &s.MinCeilingHeight,
 			&s.ChildrenRequired, &s.PetsRequired, &s.DishwasherRequired, &s.ConditionerRequired,
-			&s.MinRenovation, &s.BalconyRequired, &s.BathroomType); err != nil {
+			&s.MinRenovation, &s.BalconyRequired, &s.BathroomType, &s.MetroStations); err != nil {
 			return nil, fmt.Errorf("scanning subscription: %w", err)
 		}
 		subs = append(subs, s)
