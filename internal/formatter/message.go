@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/asmisnik/flats-analyzer/internal/geo"
 	"github.com/asmisnik/flats-analyzer/internal/model"
 	"github.com/asmisnik/flats-analyzer/internal/region"
 )
@@ -63,6 +64,10 @@ func FormatFlat(f *model.FlatInfo, showRegion, showDealType bool) string {
 		sb.WriteString("Метро: " + strings.TrimRight(f.UndergroundDistanceInfo, ", ") + "\n")
 		fmt.Fprintf(&sb, "Место метро в рейтинге: %d\n", f.UndergroundPlace)
 	}
+	if f.Latitude != 0 || f.Longitude != 0 {
+		sb.WriteString(ringDistanceLine("Садового кольца", geo.DistanceToSadovoeRingKM, geo.InsideSadovoeRing, f.Latitude, f.Longitude))
+		sb.WriteString(ringDistanceLine("ТТК", geo.DistanceToTTKRingKM, geo.InsideTTKRing, f.Latitude, f.Longitude))
+	}
 
 	sb.WriteString("\n")
 	if f.Renovation != "" {
@@ -104,6 +109,17 @@ func FormatFlat(f *model.FlatInfo, showRegion, showDealType bool) string {
 	}
 
 	return sb.String()
+}
+
+// ringDistanceLine renders one "Расстояние до <ring>: X.XX (внутри/снаружи)"
+// line for a ring's distance/inside functions (geo.DistanceToSadovoeRingKM,
+// geo.DistanceToTTKRingKM, etc.).
+func ringDistanceLine(ringName string, distanceKM func(lat, lon float64) float64, isInside func(lat, lon float64) bool, lat, lon float64) string {
+	location := "снаружи"
+	if isInside(lat, lon) {
+		location = "внутри"
+	}
+	return fmt.Sprintf("Расстояние до %s: %.2f (%s)\n", ringName, distanceKM(lat, lon), location)
 }
 
 // formatThousands renders an integer with apostrophes between every group of

@@ -6,6 +6,8 @@ type FlatInfo struct {
 	DealType                 string   `json:"DealType"`
 	Price                    int      `json:"Price"`
 	FlatScore                int      `json:"FlatScore"`
+	Latitude                 float64  `json:"Latitude"`
+	Longitude                float64  `json:"Longitude"`
 	UndergroundScore         float64  `json:"UndergroundScore"`
 	UndergroundPlace         int      `json:"UndergroundPlace"`
 	UndergroundDistanceInfo  string   `json:"UndergroundDistanceInfo"`
