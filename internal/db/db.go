@@ -9,17 +9,26 @@ import (
 )
 
 type Subscription struct {
-	ID            int
-	ChatID        int64
+	ID     int
+	ChatID int64
+
 	DealType      string
 	Region        int
 	MetroStations []string
-	MinPrice      int
-	MaxPrice      int
-	MinArea       float64
-	MaxArea       float64
-	Rooms         []int32
-	MinScore      int
+
+	// PriorityStationNames is the subscriber's priority-boosted station
+	// ranking, best-first (index 0 = place 1), precomputed once at
+	// subscription-creation time by subscription-handler. If set,
+	// MinUndergroundPlace is checked against a flat's best place in this
+	// ranking instead of the flat's static UndergroundPlace.
+	PriorityStationNames []string
+
+	MinPrice int
+	MaxPrice int
+	MinArea  float64
+	MaxArea  float64
+	Rooms    []int32
+	MinScore int
 
 	// Extended filters (zero-valued when not set, meaning "no filter").
 	MinUndergroundPlace int
@@ -60,7 +69,7 @@ func (db *DB) GetActiveSubscriptions(ctx context.Context) ([]Subscription, error
 		`SELECT id, chat_id, deal_type, region, min_price, max_price, min_area, max_area, rooms, min_score,
 		        min_underground_place, min_kitchen_area, min_floor, max_floor, min_ceiling_height,
 		        children_required, pets_required, dishwasher_required, conditioner_required,
-		        min_renovation, balcony_required, bathroom_type, metro_stations
+		        min_renovation, balcony_required, bathroom_type, metro_stations, priority_station_names
 		 FROM user_subscriptions
 		 WHERE is_active = TRUE`)
 	if err != nil {
@@ -75,7 +84,7 @@ func (db *DB) GetActiveSubscriptions(ctx context.Context) ([]Subscription, error
 			&s.MinArea, &s.MaxArea, &s.Rooms, &s.MinScore,
 			&s.MinUndergroundPlace, &s.MinKitchenArea, &s.MinFloor, &s.MaxFloor, &s.MinCeilingHeight,
 			&s.ChildrenRequired, &s.PetsRequired, &s.DishwasherRequired, &s.ConditionerRequired,
-			&s.MinRenovation, &s.BalconyRequired, &s.BathroomType, &s.MetroStations); err != nil {
+			&s.MinRenovation, &s.BalconyRequired, &s.BathroomType, &s.MetroStations, &s.PriorityStationNames); err != nil {
 			return nil, fmt.Errorf("scanning subscription: %w", err)
 		}
 		subs = append(subs, s)

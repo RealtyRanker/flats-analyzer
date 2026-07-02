@@ -186,8 +186,11 @@ func matchesSubscription(f *model.FlatInfo, s *db.Subscription, score int) bool 
 		}
 	}
 
-	if s.MinUndergroundPlace > 0 && (f.UndergroundPlace == 0 || f.UndergroundPlace > s.MinUndergroundPlace) {
-		return false
+	if s.MinUndergroundPlace > 0 {
+		place := undergroundPlaceForSubscription(f, s)
+		if place == 0 || place > s.MinUndergroundPlace {
+			return false
+		}
 	}
 	if len(s.MetroStations) > 0 && !stationsIntersect(f.UndergroundStations, s.MetroStations) {
 		return false
@@ -273,6 +276,46 @@ func stationsIntersect(flatStations, filterStations []string) bool {
 		}
 	}
 	return false
+}
+
+// undergroundPlaceForSubscription returns the underground place to check
+// against s.MinUndergroundPlace: the flat's default place (from the static,
+// unweighted metro ranking) unless the subscriber named priority stations,
+// in which case it's the flat's best place among its underground stations in
+// that subscriber's priority-boosted station ranking (precomputed once by
+// subscription-handler at subscription-creation time and stored in
+// s.PriorityStationNames, best-first) — so two subscribers with different
+// priorities can see a different place for the same flat, with no per-flat
+// recomputation of the ranking algorithm here. Returns 0 (undefined) if no
+// ranked station matches any of the flat's underground stations.
+func undergroundPlaceForSubscription(f *model.FlatInfo, s *db.Subscription) int {
+	if len(s.PriorityStationNames) == 0 {
+		return f.UndergroundPlace
+	}
+
+	best := 0
+	for _, station := range f.UndergroundStations {
+		for i, ranked := range s.PriorityStationNames {
+			if !strings.EqualFold(normalizeStationName(station), normalizeStationName(ranked)) {
+				continue
+			}
+			place := i + 1
+			if best == 0 || place < best {
+				best = place
+			}
+			break
+		}
+	}
+	return best
+}
+
+// normalizeStationName folds ё/Ё to е/Е, matching subscription-handler's
+// metro.NormalizeStationName so a flat's station names compare correctly
+// against a subscriber's priority-boosted ranking regardless of that
+// difference; case is additionally ignored via strings.EqualFold above.
+func normalizeStationName(s string) string {
+	s = strings.ReplaceAll(s, "ё", "е")
+	return strings.ReplaceAll(s, "Ё", "Е")
 }
 
 // renovationRank ranks renovation levels design > euro > cosmetic > (any
