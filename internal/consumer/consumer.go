@@ -73,7 +73,6 @@ func (c *Consumer) processMessage(ctx context.Context, msg kafka.Message) {
 		return
 	}
 	metrics.FlatsConsumed.Inc()
-	c.logger.Debug("flat consumed", zap.String("link", flat.Link))
 
 	flatID, err := c.db.GetFlatIDByLink(ctx, flat.Link)
 	if err != nil {
@@ -99,8 +98,6 @@ func (c *Consumer) processMessage(ctx context.Context, msg kafka.Message) {
 		}
 
 		if !matchesSubscription(&flat, &sub, score) {
-			c.logger.Debug("flat does not match subscription",
-				zap.String("link", flat.Link), zap.Int("sub_id", sub.ID))
 			continue
 		}
 		metrics.SubscriptionsMatched.Inc()
@@ -111,7 +108,6 @@ func (c *Consumer) processMessage(ctx context.Context, msg kafka.Message) {
 			continue
 		}
 		if sent {
-			c.logger.Debug("flat already sent", zap.String("link", flat.Link), zap.Int("sub_id", sub.ID))
 			continue
 		}
 
