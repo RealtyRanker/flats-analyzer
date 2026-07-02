@@ -27,7 +27,7 @@ type Subscription struct {
 	MaxPrice int
 	MinArea  float64
 	MaxArea  float64
-	Rooms    []int32
+	Rooms    []int64
 	MinScore int
 
 	// Extended filters (zero-valued when not set, meaning "no filter").
